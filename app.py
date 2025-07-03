@@ -1,16 +1,17 @@
 # app.py
 
 # Importa los módulos necesarios de Flask
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import os
-import json # Necesario para parsear la configuración de Firebase
-from datetime import datetime # Para añadir la fecha y hora al mensaje
+import json
+from datetime import datetime
+import requests # Para hacer peticiones HTTP a la API de Gemini
 
 # Importa los módulos de Firebase Admin SDK
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
-from firebase_admin import auth # Para la autenticación
+from firebase_admin import auth
 
 
 app = Flask(__name__)
@@ -19,39 +20,27 @@ app = Flask(__name__)
 app.secret_key = b'g\xce\xe5\x15g\xc6\x19\xda\xd5\xc1\x14\x9a-\x83\xe8\xc1\xd5`\x0b\xa3\xebw\x1d\x9f'
 
 # --- Inicialización de Firebase Firestore ---
-# Las variables __app_id, __firebase_config, __initial_auth_token son proporcionadas por el entorno Canvas.
-# Si estas variables no existen (ej. en desarrollo local), usaremos un archivo de credenciales local.
-app_id = os.environ.get('__app_id', 'default-app-id') # 'default-app-id' para desarrollo local
-firebase_config_str = os.environ.get('__firebase_config', None) # None si no está en el entorno Canvas
+app_id = os.environ.get('__app_id', 'default-app-id')
+firebase_config_str = os.environ.get('__firebase_config', None)
 initial_auth_token = os.environ.get('__initial_auth_token', None)
 
-# --- DEBUGGING: Imprimir el valor de la variable de entorno ---
-print(f"DEBUG: Valor de firebase_config_str (desde os.environ): {firebase_config_str}")
-if firebase_config_str:
-    print("DEBUG: firebase_config_str NO es None o vacío. Intentando cargar JSON.")
-else:
-    print("DEBUG: firebase_config_str ES None o vacío. Intentando cargar archivo local.")
-# --- FIN DEBUGGING ---
+# --- Obtener la API Key de Gemini desde variables de entorno ---
+# Esta clave DEBE ser configurada en Render como una variable de entorno.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '') 
+if not GEMINI_API_KEY:
+    print("ADVERTENCIA: La variable de entorno GEMINI_API_KEY no está configurada. La API de IA no funcionará.")
+
 
 # Inicializa Firebase Admin SDK si aún no se ha hecho
 if not firebase_admin._apps:
     try:
         if firebase_config_str:
-            # Si estamos en el entorno Canvas (o similar), usamos las variables de entorno
             firebase_config = json.loads(firebase_config_str)
             cred = credentials.Certificate(firebase_config)
             firebase_admin.initialize_app(cred)
-            print("Firebase Admin SDK inicializado con credenciales del entorno Canvas.")
+            print("Firebase Admin SDK inicializado con credenciales del entorno Canvas/Render.")
         else:
-            # PARA DESARROLLO LOCAL (o si la variable de entorno no se carga correctamente en Render):
-            # Necesitas un archivo de credenciales de cuenta de servicio de Firebase.
-            # 1. Ve a la Consola de Firebase -> Configuración del proyecto (engranaje) -> Cuentas de servicio.
-            # 2. Haz clic en "Generar nueva clave privada" y descarga el archivo JSON.
-            # 3. Coloca este archivo JSON en la MISMA CARPETA que tu app.py.
-            # 4. ASEGÚRATE de que este archivo JSON esté en tu .gitignore para NO subirlo a GitHub.
-
-            # --- ¡IMPORTANTE! Reemplaza 'nombre-de-tu-archivo-de-credenciales.json' con el nombre EXACTO de tu archivo JSON ---
-            # Ejemplo: service_account_key_path = 'my-project-id-firebase-adminsdk-xxxxx-xxxxxxxxxx.json'
+            # PARA DESARROLLO LOCAL:
             service_account_key_path = 'nombre-de-tu-archivo-de-credenciales.json' 
             
             cred = credentials.Certificate(service_account_key_path)
@@ -60,26 +49,17 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"ERROR: No se pudo inicializar Firebase Admin SDK: {e}")
         print("Asegúrate de que el archivo de credenciales JSON esté en la ruta correcta (para local) o que las variables de entorno estén configuradas (para despliegue).")
-        exit(1) # Salir si la inicialización falla
+        exit(1)
 
 # Obtiene una instancia del cliente de Firestore
 db = firestore.client()
 
 # --- Autenticación de Firebase (para acceder a Firestore) ---
 def get_current_user_id():
-    # En el entorno Canvas, __initial_auth_token se usaría para obtener el UID real.
-    # Para desarrollo local, simulamos un user_id.
     if initial_auth_token:
-        try:
-            # Esto es una simulación; en un entorno real, usarías auth.verify_id_token
-            # para obtener el UID del token. Para el SDK Admin, el token de servicio
-            # ya autentica la aplicación. El UID aquí es para la estructura de la DB.
-            return f"canvas_user_{os.urandom(16).hex()}" # Un UID para el entorno Canvas
-        except Exception as e:
-            print(f"Error al procesar initial_auth_token: {e}")
-            return f"canvas_anon_user_{os.urandom(16).hex()}"
+        return f"canvas_user_{os.urandom(16).hex()}"
     else:
-        return "local_dev_user_123" # UID para desarrollo local
+        return "local_dev_user_123"
 
 # --- Ruta principal para la página web ---
 @app.route('/')
@@ -104,10 +84,9 @@ def contact():
         }
 
         try:
-            # La ruta de la colección se ajusta según si estamos en Canvas o desarrollo local
-            if firebase_config_str: # Si estamos en Canvas, usamos la ruta de Canvas
+            if firebase_config_str:
                 collection_path = f"artifacts/{app_id}/users/{user_id}/mensajes_contacto"
-            else: # Para desarrollo local, usamos una colección simple
+            else:
                 collection_path = f"mensajes_contacto_local/{user_id}/mensajes"
             
             doc_ref = db.collection(collection_path).add(contact_data)
@@ -127,6 +106,55 @@ def contact():
         return redirect(url_for('index') + '#contact')
     else:
         return redirect(url_for('index'))
+
+# --- NUEVA RUTA: Endpoint para la API de Chat con Gemini ---
+@app.route('/api/chat', methods=['POST'])
+def chat_api():
+    if not GEMINI_API_KEY:
+        return jsonify({"error": "API Key de Gemini no configurada en el servidor."}), 500
+
+    data = request.get_json()
+    user_message = data.get('message')
+
+    if not user_message:
+        return jsonify({"error": "No se proporcionó ningún mensaje."}), 400
+
+    try:
+        chat_history = []
+        chat_history.append({"role": "user", "parts": [{"text": user_message}]})
+
+        payload = {
+            "contents": chat_history
+        }
+
+        gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        
+        headers = {
+            'Content-Type': 'application/json'
+        }
+
+        response = requests.post(gemini_api_url, headers=headers, json=payload)
+        response.raise_for_status() # Lanza una excepción para códigos de estado de error (4xx o 5xx)
+        
+        gemini_result = response.json()
+
+        if gemini_result.get('candidates') and len(gemini_result['candidates']) > 0 and \
+           gemini_result['candidates'][0].get('content') and \
+           gemini_result['candidates'][0]['content'].get('parts') and \
+           len(gemini_result['candidates'][0]['content']['parts']) > 0:
+            ai_response = gemini_result['candidates'][0]['content']['parts'][0]['text']
+            return jsonify({"response": ai_response})
+        else:
+            print(f"Respuesta inesperada de Gemini: {gemini_result}")
+            return jsonify({"error": "Lo siento, no pude generar una respuesta de la IA."}), 500
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error en la petición a la API de Gemini: {e}")
+        return jsonify({"error": f"Error de conexión con la IA: {str(e)}"}), 500
+    except Exception as e:
+        print(f"Error inesperado al procesar la API de Gemini: {e}")
+        return jsonify({"error": f"Error interno del servidor al procesar la IA: {str(e)}"}), 500
+
 
 # --- Configuración para ejecutar la aplicación ---
 if __name__ == '__main__':

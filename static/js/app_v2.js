@@ -11,20 +11,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function showFlashMessages() {
         if (flashMessagesContainer) {
             flashMessagesContainer.style.display = 'block';
-            // Opcional: Ocultar mensajes después de un tiempo
             setTimeout(() => {
                 flashMessagesContainer.style.display = 'none';
-            }, 5000); // Ocultar después de 5 segundos
+            }, 5000);
         }
     }
 
-    // Llama a la función al cargar la página
     showFlashMessages();
 
     // --- Funcionalidad de auto-ajuste del textarea ---
     function autoResizeTextarea() {
-        userInput.style.height = 'auto'; // Restablece la altura para calcular la nueva
-        userInput.style.height = userInput.scrollHeight + 'px'; // Ajusta a la altura del contenido
+        userInput.style.height = 'auto';
+        userInput.style.height = userInput.scrollHeight + 'px';
     }
 
     userInput.addEventListener('input', autoResizeTextarea);
@@ -45,88 +43,69 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (sender === 'user') {
             messageContainer.classList.add('user-message-container');
-            messageContainer.classList.add('user-message'); // Añadir clase específica de usuario
+            messageContainer.classList.add('user-message');
         } else {
             messageContainer.classList.add('ai-message-container');
-            messageContainer.classList.add('ai-message'); // Añadir clase específica de IA
+            messageContainer.classList.add('ai-message');
         }
 
         messageContainer.appendChild(chatBubble);
         messageContainer.appendChild(timestamp);
         chatOutput.appendChild(messageContainer);
 
-        // Desplazar al final del chat
         chatOutput.scrollTop = chatOutput.scrollHeight;
     }
 
-    // --- Función para enviar mensaje a la IA ---
+    // --- Función para enviar mensaje a la IA (a través de Flask) ---
     async function sendMessageToAI() {
         const message = userInput.value.trim();
-        if (message === '') return; // No enviar mensajes vacíos
+        if (message === '') return;
 
-        addMessage('user', message); // Añadir mensaje del usuario al chat
-        userInput.value = ''; // Limpiar el input
-        autoResizeTextarea(); // Ajustar el tamaño del textarea
+        addMessage('user', message);
+        userInput.value = '';
+        autoResizeTextarea();
 
-        loadingIndicator.style.display = 'flex'; // Mostrar indicador de carga
-        sendButton.disabled = true; // Deshabilitar botón de enviar
+        loadingIndicator.style.display = 'flex';
+        sendButton.disabled = true;
 
         try {
-            // Llama a la API de Gemini para generar contenido
-            // NOTA: En un entorno real, esta llamada API se haría a tu backend Flask,
-            // y tu backend Flask llamaría a la API de Gemini de forma segura.
-            // Para este ejemplo, simulamos la llamada directa para probar la UI.
-            // Si tu Flask ya tiene un endpoint para la IA, deberías llamarlo aquí.
-
-            let chatHistory = [];
-            chatHistory.push({ role: "user", parts: [{ text: message }] });
-
-            const payload = { contents: chatHistory };
-            const apiKey = ""; // Canvas proporcionará esto en tiempo de ejecución.
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
+            // Llama a tu endpoint Flask para la IA
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ message: message })
             });
 
-            const result = await response.json();
+            const data = await response.json();
 
-            if (result.candidates && result.candidates.length > 0 &&
-                result.candidates[0].content && result.candidates[0].content.parts &&
-                result.candidates[0].content.parts.length > 0) {
-                const aiResponse = result.candidates[0].content.parts[0].text;
-                addMessage('ai', aiResponse); // Añadir respuesta de la IA
-            } else {
-                addMessage('ai', 'Lo siento, no pude generar una respuesta. Inténtalo de nuevo.');
-                console.error('Estructura de respuesta inesperada de la API de Gemini:', result);
+            if (response.ok) { // Si la respuesta HTTP es 200 OK
+                addMessage('ai', data.response);
+            } else { // Si hay un error del servidor Flask
+                addMessage('ai', data.error || 'Lo siento, hubo un error al comunicarse con la IA.');
+                console.error('Error del servidor Flask:', data.error);
             }
 
         } catch (error) {
-            console.error('Error al comunicarse con la IA:', error);
-            addMessage('ai', 'Hubo un error al conectar con la IA. Por favor, revisa tu conexión.');
+            console.error('Error al comunicarse con el backend Flask:', error);
+            addMessage('ai', 'Hubo un error de red al conectar con el servidor. Por favor, revisa tu conexión.');
         } finally {
-            loadingIndicator.style.display = 'none'; // Ocultar indicador de carga
-            sendButton.disabled = false; // Habilitar botón de enviar
-            userInput.focus(); // Volver a enfocar el input
+            loadingIndicator.style.display = 'none';
+            sendButton.disabled = false;
+            userInput.focus();
         }
     }
 
     // --- Event Listeners para el botón de enviar ---
-    // Para clics (escritorio)
     sendButton.addEventListener('click', sendMessageToAI);
-
-    // Para toques (móvil) - touchstart para una respuesta más rápida en móviles
     sendButton.addEventListener('touchstart', function(event) {
-        event.preventDefault(); // Previene el comportamiento predeterminado del toque (ej. zoom)
+        event.preventDefault();
         sendMessageToAI();
-    }, { passive: false }); // Usar { passive: false } para permitir preventDefault
+    }, { passive: false });
 
     // También permitir enviar con la tecla Enter en el input de texto
     userInput.addEventListener('keypress', function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) { // Enter sin Shift
-            event.preventDefault(); // Prevenir salto de línea
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
             sendMessageToAI();
         }
     });
@@ -138,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const accordionItem = header.parentElement;
             const accordionContent = header.nextElementSibling;
 
-            // Cierra todos los demás acordeones
             accordionHeaders.forEach(otherHeader => {
                 const otherItem = otherHeader.parentElement;
                 const otherContent = otherHeader.nextElementSibling;
@@ -149,7 +127,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Abre o cierra el acordeón actual
             accordionItem.classList.toggle('active');
             header.classList.toggle('active');
             if (accordionItem.classList.contains('active')) {
@@ -163,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Funcionalidad de Sticky Header ---
     const header = document.querySelector('header');
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) { // Ajusta este valor según cuándo quieres que se haga sticky
+        if (window.scrollY > 50) {
             header.classList.add('scrolled');
         } else {
             header.classList.remove('scrolled');
