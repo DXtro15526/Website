@@ -1,207 +1,172 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Configuración de la API de Gemini (solo para uso personal y local) ---
-    // ¡ADVERTENCIA: NO USES ESTO EN UN SITIO WEB PÚBLICO! TU CLAVE SERÁ VISIBLE.
-    const GEMINI_API_KEY = "AIzaSyChkgbU9NSdHzweR44oa7OwBq4YEyIrcpM"; // Tu clave API
-    const API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+// static/js/app.js
 
-    // --- Elementos del DOM ---
+document.addEventListener('DOMContentLoaded', function() {
+    const chatOutput = document.getElementById('chat-output');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
-    const chatOutput = document.getElementById('chat-output');
     const loadingIndicator = document.getElementById('loading-indicator');
+    const flashMessagesContainer = document.querySelector('.flash-messages');
 
-    // --- Smooth Scrolling para la navegación ---
-    document.querySelectorAll('nav a[href^="#"], .cta-button[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
+    // --- Función para mostrar mensajes flash de Flask (si existen) ---
+    function showFlashMessages() {
+        if (flashMessagesContainer) {
+            flashMessagesContainer.style.display = 'block';
+            // Opcional: Ocultar mensajes después de un tiempo
+            setTimeout(() => {
+                flashMessagesContainer.style.display = 'none';
+            }, 5000); // Ocultar después de 5 segundos
+        }
+    }
+
+    // Llama a la función al cargar la página
+    showFlashMessages();
+
+    // --- Funcionalidad de auto-ajuste del textarea ---
+    function autoResizeTextarea() {
+        userInput.style.height = 'auto'; // Restablece la altura para calcular la nueva
+        userInput.style.height = userInput.scrollHeight + 'px'; // Ajusta a la altura del contenido
+    }
+
+    userInput.addEventListener('input', autoResizeTextarea);
+
+    // --- Función para añadir un mensaje al chat ---
+    function addMessage(sender, text) {
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('message-container');
+
+        const chatBubble = document.createElement('div');
+        chatBubble.classList.add('chat-bubble');
+        chatBubble.textContent = text;
+
+        const timestamp = document.createElement('span');
+        timestamp.classList.add('message-timestamp');
+        const now = new Date();
+        timestamp.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (sender === 'user') {
+            messageContainer.classList.add('user-message-container');
+            messageContainer.classList.add('user-message'); // Añadir clase específica de usuario
+        } else {
+            messageContainer.classList.add('ai-message-container');
+            messageContainer.classList.add('ai-message'); // Añadir clase específica de IA
+        }
+
+        messageContainer.appendChild(chatBubble);
+        messageContainer.appendChild(timestamp);
+        chatOutput.appendChild(messageContainer);
+
+        // Desplazar al final del chat
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+    }
+
+    // --- Función para enviar mensaje a la IA ---
+    async function sendMessageToAI() {
+        const message = userInput.value.trim();
+        if (message === '') return; // No enviar mensajes vacíos
+
+        addMessage('user', message); // Añadir mensaje del usuario al chat
+        userInput.value = ''; // Limpiar el input
+        autoResizeTextarea(); // Ajustar el tamaño del textarea
+
+        loadingIndicator.style.display = 'flex'; // Mostrar indicador de carga
+        sendButton.disabled = true; // Deshabilitar botón de enviar
+
+        try {
+            // Llama a la API de Gemini para generar contenido
+            // NOTA: En un entorno real, esta llamada API se haría a tu backend Flask,
+            // y tu backend Flask llamaría a la API de Gemini de forma segura.
+            // Para este ejemplo, simulamos la llamada directa para probar la UI.
+            // Si tu Flask ya tiene un endpoint para la IA, deberías llamarlo aquí.
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: message }] });
+
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas proporcionará esto en tiempo de ejecución.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
-        });
+
+            const result = await response.json();
+
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const aiResponse = result.candidates[0].content.parts[0].text;
+                addMessage('ai', aiResponse); // Añadir respuesta de la IA
+            } else {
+                addMessage('ai', 'Lo siento, no pude generar una respuesta. Inténtalo de nuevo.');
+                console.error('Estructura de respuesta inesperada de la API de Gemini:', result);
+            }
+
+        } catch (error) {
+            console.error('Error al comunicarse con la IA:', error);
+            addMessage('ai', 'Hubo un error al conectar con la IA. Por favor, revisa tu conexión.');
+        } finally {
+            loadingIndicator.style.display = 'none'; // Ocultar indicador de carga
+            sendButton.disabled = false; // Habilitar botón de enviar
+            userInput.focus(); // Volver a enfocar el input
+        }
+    }
+
+    // --- Event Listeners para el botón de enviar ---
+    // Para clics (escritorio)
+    sendButton.addEventListener('click', sendMessageToAI);
+
+    // Para toques (móvil) - touchstart para una respuesta más rápida en móviles
+    sendButton.addEventListener('touchstart', function(event) {
+        event.preventDefault(); // Previene el comportamiento predeterminado del toque (ej. zoom)
+        sendMessageToAI();
+    }, { passive: false }); // Usar { passive: false } para permitir preventDefault
+
+    // También permitir enviar con la tecla Enter en el input de texto
+    userInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) { // Enter sin Shift
+            event.preventDefault(); // Prevenir salto de línea
+            sendMessageToAI();
+        }
     });
 
-    // --- Lógica del Acordeón para FAQ ---
+    // --- Funcionalidad del acordeón para FAQ ---
     const accordionHeaders = document.querySelectorAll('.accordion-header');
-
     accordionHeaders.forEach(header => {
         header.addEventListener('click', () => {
-            const currentContent = header.nextElementSibling;
-            const currentActive = document.querySelector('.accordion-header.active');
+            const accordionItem = header.parentElement;
+            const accordionContent = header.nextElementSibling;
 
-            if (currentActive && currentActive !== header) {
-                currentActive.classList.remove('active');
-                currentActive.nextElementSibling.style.maxHeight = null;
-                currentActive.nextElementSibling.style.padding = '0 25px';
-            }
+            // Cierra todos los demás acordeones
+            accordionHeaders.forEach(otherHeader => {
+                const otherItem = otherHeader.parentElement;
+                const otherContent = otherHeader.nextElementSibling;
+                if (otherItem !== accordionItem && otherItem.classList.contains('active')) {
+                    otherItem.classList.remove('active');
+                    otherContent.style.maxHeight = null;
+                    otherHeader.classList.remove('active');
+                }
+            });
 
+            // Abre o cierra el acordeón actual
+            accordionItem.classList.toggle('active');
             header.classList.toggle('active');
-            if (header.classList.contains('active')) {
-                currentContent.style.maxHeight = currentContent.scrollHeight + 'px';
-                currentContent.style.padding = '0 25px 20px 25px';
+            if (accordionItem.classList.contains('active')) {
+                accordionContent.style.maxHeight = accordionContent.scrollHeight + "px";
             } else {
-                currentContent.style.maxHeight = null;
-                currentContent.style.padding = '0 25px';
+                accordionContent.style.maxHeight = null;
             }
         });
     });
 
-// --- Lógica de la Barra de Navegación "Burbuja" ---
+    // --- Funcionalidad de Sticky Header ---
     const header = document.querySelector('header');
-    const heroSection = document.getElementById('hero');
-    let heroHeight = heroSection.offsetHeight; // Obtener la altura de la sección hero
-
-    // Actualizar la altura del hero si la ventana cambia de tamaño
-    window.addEventListener('resize', () => {
-        heroHeight = heroSection.offsetHeight;
-    });
-
     window.addEventListener('scroll', () => {
-        if (window.scrollY > heroHeight - 50) { // Si el scroll pasa la mayor parte del hero (ajusta 50px si es necesario)
+        if (window.scrollY > 50) { // Ajusta este valor según cuándo quieres que se haga sticky
             header.classList.add('scrolled');
         } else {
             header.classList.remove('scrolled');
         }
     });
-
-    // ... (resto de tu script.js, incluyendo la lógica de la IA) ...
-
-
-
-    // --- Lógica de Interacción con la IA ---
-
-    // Función para agregar un mensaje al chat
-    function appendMessage(text, type) {
-        const messageContainer = document.createElement('div');
-        messageContainer.classList.add('message-container');
-        messageContainer.classList.add(`${type}-container`); // user-message-container o ai-message-container
-
-        const messageBubble = document.createElement('div');
-        messageBubble.classList.add('chat-bubble');
-        messageBubble.classList.add(type); // user-message o ai-message
-        // Para permitir que la IA devuelva HTML simple como saltos de línea y formateo básico
-        messageBubble.innerHTML = formatAIResponse(text);
-
-        const timestampDiv = document.createElement('div');
-        timestampDiv.classList.add('message-timestamp');
-        timestampDiv.textContent = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-
-        messageContainer.appendChild(messageBubble);
-        messageContainer.appendChild(timestampDiv); // Agrega el timestamp
-
-        chatOutput.appendChild(messageContainer);
-        chatOutput.scrollTop = chatOutput.scrollHeight; // Auto-scroll al final
-    }
-
-    // Formateo básico para la respuesta de la IA (puedes expandirlo)
-    function formatAIResponse(text) {
-        // Reemplaza saltos de línea con <br>
-        text = text.replace(/\n/g, '<br>');
-        // Opcional: Podrías añadir más formateo Markdown si el modelo lo devuelve
-        // Por ejemplo, **texto** -> <strong>texto</strong>
-        // o `codigo` -> <code>codigo</code>
-        return text;
-    }
-
-    // Función principal para enviar el mensaje
-    async function sendMessage() {
-        const message = userInput.value.trim();
-        if (message === '') return;
-
-        // Deshabilitar input y botón de enviar mientras se procesa
-        userInput.disabled = true;
-        sendButton.disabled = true;
-        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...'; // Spinner en el botón
-
-        // Mostrar mensaje del usuario
-        appendMessage(message, 'user-message');
-        userInput.value = ''; // Limpiar input
-
-        // Mostrar indicador de carga "Procesando..."
-        loadingIndicator.style.display = 'flex';
-        chatOutput.scrollTop = chatOutput.scrollHeight;
-
-        try {
-            const response = await fetch(`${API_ENDPOINT}?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text: message
-                                }
-                            ]
-                        }
-                    ]
-                })
-            });
-
-            if (!response.ok) {
-                // Intenta parsear el error para dar un mensaje más específico
-                let errorDetails = `Error HTTP: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    if (errorData && errorData.error && errorData.error.message) {
-                        errorDetails = errorData.error.message;
-                    }
-                } catch (jsonError) {
-                    // Si no se puede parsear como JSON, usa el estado HTTP
-                    console.error('Error al parsear la respuesta de error:', jsonError);
-                }
-                throw new Error(errorDetails);
-            }
-
-            const data = await response.json();
-            let aiResponse = "Lo siento, no pude generar una respuesta clara.";
-
-            // Verificar si hay candidatos de respuesta y extraer el texto
-            if (data && data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
-                aiResponse = data.candidates[0].content.parts[0].text;
-            } else if (data && data.promptFeedback && data.promptFeedback.blockReason) {
-                // Manejo de casos de bloqueo de contenido (seguridad)
-                aiResponse = `Lo siento, tu solicitud fue bloqueada por la IA debido a políticas de seguridad (${data.promptFeedback.blockReason}). Por favor, intenta reformular tu pregunta.`;
-            } else {
-                // Caso para otras respuestas inesperadas
-                aiResponse = "La IA no proporcionó una respuesta esperada. Intenta de nuevo.";
-                console.warn("Respuesta inesperada de la API:", data);
-            }
-
-            // Mostrar respuesta de la IA
-            appendMessage(aiResponse, 'ai-message');
-
-        } catch (error) {
-            console.error('Error al comunicarse con la IA:', error);
-            appendMessage(`Lo siento, hubo un error al procesar tu solicitud. Por favor, asegúrate de que tu clave API sea válida, que tengas conexión a internet y que tu pregunta no infrinja las políticas de uso. Detalles: ${error.message}`, 'ai-message');
-        } finally {
-            // Ocultar indicador de carga
-            loadingIndicator.style.display = 'none';
-            // Re-habilitar input y botón de enviar
-            userInput.disabled = false;
-            sendButton.disabled = false;
-            sendButton.innerHTML = 'Enviar <i class="fas fa-paper-plane"></i>';
-            userInput.focus(); // Vuelve a enfocar el input
-            chatOutput.scrollTop = chatOutput.scrollHeight; // Asegurarse de que el scroll esté al final
-        }
-    }
-
-    // Ajustar la altura del textarea dinámicamente
-    userInput.addEventListener('input', () => {
-        userInput.style.height = 'auto'; // Restablece la altura para calcular la nueva
-        userInput.style.height = userInput.scrollHeight + 'px'; // Ajusta a la altura del contenido
-    });
-
-    // Permite enviar mensaje con Enter, pero Shift+Enter para nueva línea
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-
-    // Añadir mensaje de bienvenida al cargar
-    appendMessage('¡Hola! Soy tu asistente de IA. ¿En qué puedo ayudarte hoy?', 'ai-message welcome');
 });
