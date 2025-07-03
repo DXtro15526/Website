@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+# Ignorar archivos JSON (especialmente las claves de Firebase)
+*.json
+# Ignorar logs
+*.log
+# Ignorar archivos específicos de IDEs si usas
+.vscode/
+.idea/

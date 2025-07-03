@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Juan</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Ajusta la ruta de tu CSS si está en una carpeta 'static' -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1 class="logo"><i class="fas fa-robot"></i> AI<span>Juan</span></h1>
+            <nav>
+                <ul>
+                    <li><a href="#hero">Inicio</a></li>
+                    <li><a href="#how-it-works">Cómo Funciona</a></li>
+                    <li><a href="#ai-interaction">Interactúa con IA</a></li>
+                    <li><a href="#use-cases">Casos de Uso</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="#contact">Contacto</a></li>
+                </ul>
+            </nav>
+            <a href="#contact" class="cta-button header-cta">¡Empieza Ahora! <i class="fas fa-arrow-right"></i></a>
+        </div>
+    </header>
+
+    <main>
+        <!-- Bloque para mostrar mensajes Flash de Flask -->
+        <div class="container flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                            <button type="button" class="close-alert" onclick="this.parentElement.style.display='none';">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <section id="hero" class="hero-section">
+            <div class="container">
+                <div class="hero-content">
+                    <h1>Desbloquea el Potencial de la Inteligencia Artificial</h1>
+                    <p>Conecta, crea y transforma con nuestras soluciones de IA de vanguardia. Simplifica tareas, automatiza procesos y lleva tu negocio al siguiente nivel.</p>
+                    <a href="#ai-interaction" class="cta-button hero-cta">Explora la IA Ahora <i class="fas fa-brain"></i></a>
+                </div>
+                <div class="hero-image">
+                    <img src="https://via.placeholder.com/600x400?text=AI+Innovation" alt="AI Innovation">
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="how-it-works-section">
+            <div class="container">
+                <h2>Cómo Funciona Nuestra IA</h2>
+                <p class="intro-text">Nuestras soluciones de IA están diseñadas para ser intuitivas y potentes, permitiéndote aprovechar el poder de la inteligencia artificial en solo unos pocos pasos.</p>
+                <div class="steps-grid">
+                    <div class="step-item">
+                        <i class="fas fa-lightbulb"></i>
+                        <h3>1. Define tu Objetivo</h3>
+                        <p>Plantea tus necesidades o la tarea que deseas automatizar o mejorar. Nuestra IA se adapta a tus requerimientos.</p>
+                    </div>
+                    <div class="step-item">
+                        <i class="fas fa-cogs"></i>
+                        <h3>2. Implementación Inteligente</h3>
+                        <p>Nuestros modelos se integran fácilmente en tus sistemas, comenzando a aprender y optimizar desde el primer día.</p>
+                    </div>
+                    <div class="step-item">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>3. Observa los Resultados</h3>
+                        <p>Monitorea el rendimiento, obtén análisis detallados y experimenta la eficiencia y precisión que solo la IA puede ofrecer.</p>
+                    </div>
+                </div>
+                <p class="bottom-text">Así de simple. La complejidad de la IA, simplificada para ti.</p>
+            </div>
+        </section>
+
+        <section id="ai-interaction" class="ai-interaction-section">
+            <div class="container">
+                <h2>Interactúa con Nuestra IA Ahora</h2>
+                <p>Experimenta el poder de nuestra inteligencia artificial en tiempo real. Escribe una pregunta o un comando y observa cómo responde.</p>
+
+                <div class="ai-chat-interface">
+                    <div class="chat-output" id="chat-output">
+                        <!-- El mensaje de bienvenida inicial de la IA ha sido eliminado de aquí. -->
+                        <!-- Ahora, si deseas un mensaje de bienvenida, debe ser añadido dinámicamente por tu app.js. -->
+                    </div>
+                    <div class="loading-indicator" id="loading-indicator">
+                        <div class="spinner"></div>
+                        <span>La IA está pensando...</span>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea id="user-input" placeholder="Escribe tu mensaje aquí..." rows="1"></textarea>
+                        <button id="send-button" class="cta-button">
+                            <i class="fas fa-paper-plane"></i> Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="use-cases" class="use-cases-section">
+            <div class="container">
+                <h2>Aplicaciones y Casos de Uso</h2>
+                <p class="intro-text">Nuestra IA se adapta a una amplia gama de industrias y necesidades, transformando la forma en que trabajas.</p>
+                <div class="use-cases-grid">
+                    <div class="case-card">
+                        <i class="fas fa-comments"></i>
+                        <h3>Atención al Cliente</h3>
+                        <p>Bots conversacionales que resuelven dudas 24/7, mejorando la satisfacción del usuario.</p>
+                    </div>
+                    <div class="case-card">
+                        <i class="fas fa-file-alt"></i>
+                        <h3>Generación de Contenido</h3>
+                        <p>Creación automática de textos, artículos, descripciones de productos y mucho más.</p>
+                    </div>
+                    <div class="case-card">
+                        <i class="fas fa-chart-pie"></i>
+                        <h3>Análisis de Datos</h3>
+                        <p>Procesamiento rápido de grandes volúmenes de datos para insights valiosos y toma de decisiones.</p>
+                    </div>
+                    <div class="case-card">
+                        <i class="fas fa-code"></i>
+                        <h3>Desarrollo de Software</h3>
+                        <p>Asistencia en la codificación, depuración y optimización de código para desarrolladores.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="faq-section">
+            <div class="container">
+                <h2>Preguntas Frecuentes (FAQ)</h2>
+                <div class="faq-accordion">
+                    <div class="accordion-item">
+                        <button class="accordion-header">
+                            ¿Qué es la inteligencia artificial?
+                        </button>
+                        <div class="accordion-content">
+                            <p>La inteligencia artificial (IA) es un campo de la informática que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana, como aprender, razonar, resolver problemas, percibir y comprender el lenguaje.</p>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">
+                            ¿Cómo puede la IA beneficiar a mi negocio?
+                        </button>
+                        <div class="accordion-content">
+                            <p>La IA puede optimizar operaciones, automatizar tareas repetitivas, mejorar la toma de decisiones con análisis de datos, personalizar la experiencia del cliente y generar nuevas oportunidades de negocio, llevando a una mayor eficiencia y rentabilidad.</p>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">
+                            ¿Es segura mi información con la IA?
+                        </button>
+                        <div class="accordion-content">
+                            <p>Sí, la seguridad de los datos es nuestra máxima prioridad. Implementamos protocolos de encriptación avanzados, cumplimiento normativo (como GDPR) y medidas de privacidad estrictas para proteger tu información y la de tus clientes.</p>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">
+                            ¿Necesito conocimientos técnicos para usar su plataforma?
+                        </button>
+                        <div class="accordion-content">
+                            <p>No, nuestras soluciones están diseñadas para ser intuitivas y fáciles de usar, incluso para usuarios sin experiencia técnica. Ofrecemos interfaces amigables y soporte completo para que puedas aprovechar la IA sin complicaciones.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="contact-section">
+            <div class="container">
+                <h2>Contáctanos</h2>
+                <p>¿Tienes alguna pregunta o quieres saber más? ¡Envíanos un mensaje!</p>
+                <form class="contact-form" method="POST" action="/contact">
+                    <div class="form-group">
+                        <label for="name">Nombre:</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Mensaje:</label>
+                        <textarea id="message" name="message" required></textarea>
+                    </div>
+                    <button type="submit" class="cta-button">
+                        <i class="fas fa-paper-plane"></i> Enviar Mensaje
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <div class="container">
+            <h3 class="footer-logo"><i class="fas fa-robot"></i> AI<span>Juan</span></h3>
+            <div class="footer-links">
+                <ul>
+                    <li><a href="#how-it-works">Cómo Funciona</a></li>
+                    <li><a href="#use-cases">Casos de Uso</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="#contact">Contacto</a></li>
+                    <li><a href="#">Política de Privacidad</a></li>
+                </ul>
+            </div>
+            <div class="social-icons">
+                <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p class="copyright">&copy; 2025 AI Juan. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts JavaScript -->
+    <!-- SOLO ENLAZAMOS app.js, que debe contener toda la lógica del chat y otros scripts -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
